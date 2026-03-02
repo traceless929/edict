@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { api, type AgentChannelConfig } from '../api';
 
@@ -40,6 +40,7 @@ export default function ModelConfig() {
   const [statusMap, setStatusMap] = useState<Record<string, { cls: string; text: string }>>({});
   const [chMap, setChMap] = useState<Record<string, ChannelDraft>>({});
   const [chStatus, setChStatus] = useState<Record<string, { cls: string; text: string }>>({});
+  const prevServerChannels = useRef<Record<string, string>>({});
 
   useEffect(() => {
     loadAgentConfig();
@@ -48,13 +49,21 @@ export default function ModelConfig() {
   useEffect(() => {
     if (agentConfig?.agents) {
       const m: Record<string, string> = {};
-      const c: Record<string, ChannelDraft> = {};
-      agentConfig.agents.forEach((ag) => {
-        m[ag.id] = ag.model;
-        c[ag.id] = emptyDraft(ag.channel);
-      });
+      agentConfig.agents.forEach((ag) => { m[ag.id] = ag.model; });
       setSelMap(m);
-      setChMap(c);
+
+      setChMap((prev) => {
+        const next = { ...prev };
+        agentConfig.agents.forEach((ag) => {
+          const serverKey = JSON.stringify(ag.channel ?? null);
+          const prevKey = prevServerChannels.current[ag.id];
+          if (!(ag.id in next) || serverKey !== prevKey) {
+            next[ag.id] = emptyDraft(ag.channel);
+          }
+          prevServerChannels.current[ag.id] = serverKey;
+        });
+        return next;
+      });
     }
   }, [agentConfig]);
 
