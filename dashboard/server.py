@@ -30,8 +30,33 @@ MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MB
 ALLOWED_ORIGIN = None  # Set via --cors; None means restrict to localhost
 AUTH_TOKEN = None  # Set via --auth-token or auto-generated
 
-# Agent 派发渠道配置: discord, telegram, feishu, or None (使用 openclaw 默认)
-_DELIVERY_CHANNEL = os.environ.get('EDICT_CHANNEL', 'discord')
+# Agent 派发渠道：全局默认 + 每 agent 可覆盖（存 data/agent_channels.json）
+_DEFAULT_CHANNEL = os.environ.get('EDICT_CHANNEL', 'discord')
+_AGENT_CHANNELS_FILE = None  # 在 main() 中设为 DATA / 'agent_channels.json'
+
+
+def _read_agent_channels():
+    """读取 data/agent_channels.json → dict[agentId, {platform, guildId, channelId, label}]"""
+    p = _AGENT_CHANNELS_FILE or DATA / 'agent_channels.json'
+    return atomic_json_read(p, {})
+
+
+def _get_agent_channel(agent_id):
+    """返回 agent 的渠道配置；未配置时返回全局默认。"""
+    channels = _read_agent_channels()
+    ch = channels.get(agent_id)
+    if ch and ch.get('platform'):
+        return ch
+    return {'platform': _DEFAULT_CHANNEL}
+
+
+def _set_agent_channel(agent_id, config):
+    """设置单个 agent 的渠道配置并持久化。"""
+    p = _AGENT_CHANNELS_FILE or DATA / 'agent_channels.json'
+    def updater(current):
+        current[agent_id] = config
+        return current
+    atomic_json_update(p, updater, {})
 _DEFAULT_ORIGINS = {
     'http://127.0.0.1:19527', 'http://localhost:19527',
     'http://127.0.0.1:5173', 'http://localhost:5173',  # Vite dev server
@@ -862,7 +887,11 @@ def wake_agent(agent_id, message=''):
 
     def do_wake():
         try:
-            cmd = ['openclaw', 'agent', '--agent', runtime_id, '-m', msg, '--timeout', '120']
+            ch = _get_agent_channel(agent_id)
+            cmd = ['openclaw', 'agent', '--agent', runtime_id, '-m', msg,
+                   '--deliver', '--channel', ch['platform'], '--timeout', '120']
+            if ch.get('channelId'):
+                cmd += ['--to', f'channel:{ch["channelId"]}']
             log.info(f'🔔 唤醒 {agent_id}...')
             # 带重试（最多2次）
             for attempt in range(1, 3):
@@ -1985,8 +2014,11 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
                     'lastDispatchTrigger': trigger,
                 }))
                 return
+            ch = _get_agent_channel(agent_id)
             cmd = ['openclaw', 'agent', '--agent', agent_id, '-m', msg,
-                   '--deliver', '--channel', _DELIVERY_CHANNEL, '--timeout', '300']
+                   '--deliver', '--channel', ch['platform'], '--timeout', '300']
+            if ch.get('channelId'):
+                cmd += ['--to', f'channel:{ch["channelId"]}']
             max_retries = 2
             err = ''
             for attempt in range(1, max_retries + 1):
@@ -2513,6 +2545,46 @@ class Handler(BaseHTTPRequestHandler):
 
             threading.Thread(target=apply_async, daemon=True).start()
             self.send_json({'ok': True, 'message': f'Queued: {agent_id} → {model}'})
+
+        elif p == '/api/set-channel':
+            agent_id = body.get('agentId', '').strip()
+            platform = body.get('platform', '').strip()
+            if not agent_id:
+                self.send_json({'ok': False, 'error': 'agentId required'}, 400)
+                return
+            if not _SAFE_NAME_RE.match(agent_id):
+                self.send_json({'ok': False, 'error': 'agentId 含非法字符'}, 400)
+                return
+            if not platform:
+                self.send_json({'ok': False, 'error': 'platform required (discord/feishu/telegram/slack)'}, 400)
+                return
+            guild_id = body.get('guildId', '').strip()
+            channel_id = body.get('channelId', '').strip()
+            label = body.get('label', '').strip()
+            if channel_id and not re.match(r'^\d+$', channel_id):
+                self.send_json({'ok': False, 'error': 'channelId 必须为纯数字 (Discord snowflake)'}, 400)
+                return
+            if guild_id and not re.match(r'^\d+$', guild_id):
+                self.send_json({'ok': False, 'error': 'guildId 必须为纯数字 (Discord snowflake)'}, 400)
+                return
+            config = {'platform': platform}
+            if guild_id:
+                config['guildId'] = guild_id
+            if channel_id:
+                config['channelId'] = channel_id
+            if label:
+                config['label'] = label
+            _set_agent_channel(agent_id, config)
+            # 触发 sync 更新 agent_config.json
+            def sync_async():
+                try:
+                    subprocess.run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
+                except Exception:
+                    pass
+            threading.Thread(target=sync_async, daemon=True).start()
+            target_desc = f'channel:{channel_id}' if channel_id else '(default)'
+            self.send_json({'ok': True, 'message': f'{agent_id} → {platform} {target_desc}'})
+
         else:
             self.send_error(404)
 

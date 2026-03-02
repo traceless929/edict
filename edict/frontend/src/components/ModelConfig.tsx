@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
-import { api } from '../api';
+import { api, type AgentChannelConfig } from '../api';
 
 const FALLBACK_MODELS = [
   { id: 'anthropic/claude-sonnet-4-6', l: 'Claude Sonnet 4.6', p: 'Anthropic' },
@@ -15,6 +15,21 @@ const FALLBACK_MODELS = [
   { id: 'copilot/gemini-2.5-pro', l: 'Gemini 2.5 Pro', p: 'Copilot' },
 ];
 
+const PLATFORMS = [
+  { id: 'discord', label: 'Discord' },
+  { id: 'feishu', label: '飞书' },
+  { id: 'telegram', label: 'Telegram' },
+  { id: 'slack', label: 'Slack' },
+];
+
+type ChannelDraft = { platform: string; guildId: string; channelId: string; label: string };
+const emptyDraft = (ch?: AgentChannelConfig): ChannelDraft => ({
+  platform: ch?.platform || 'discord',
+  guildId: ch?.guildId || '',
+  channelId: ch?.channelId || '',
+  label: ch?.label || '',
+});
+
 export default function ModelConfig() {
   const agentConfig = useStore((s) => s.agentConfig);
   const changeLog = useStore((s) => s.changeLog);
@@ -23,6 +38,8 @@ export default function ModelConfig() {
 
   const [selMap, setSelMap] = useState<Record<string, string>>({});
   const [statusMap, setStatusMap] = useState<Record<string, { cls: string; text: string }>>({});
+  const [chMap, setChMap] = useState<Record<string, ChannelDraft>>({});
+  const [chStatus, setChStatus] = useState<Record<string, { cls: string; text: string }>>({});
 
   useEffect(() => {
     loadAgentConfig();
@@ -31,15 +48,18 @@ export default function ModelConfig() {
   useEffect(() => {
     if (agentConfig?.agents) {
       const m: Record<string, string> = {};
+      const c: Record<string, ChannelDraft> = {};
       agentConfig.agents.forEach((ag) => {
         m[ag.id] = ag.model;
+        c[ag.id] = emptyDraft(ag.channel);
       });
       setSelMap(m);
+      setChMap(c);
     }
   }, [agentConfig]);
 
   if (!agentConfig?.agents) {
-    return <div className="empty" style={{ gridColumn: '1/-1' }}>⚠️ 请先启动本地服务器</div>;
+    return <div className="empty" style={{ gridColumn: '1/-1' }}>Please start the local server first</div>;
   }
 
   const models = agentConfig.knownModels?.length
@@ -73,6 +93,57 @@ export default function ModelConfig() {
     }
   };
 
+  const updateChField = (agentId: string, field: keyof ChannelDraft, val: string) => {
+    setChMap((p) => ({ ...p, [agentId]: { ...p[agentId], [field]: val } }));
+  };
+
+  const isChChanged = (agentId: string) => {
+    const ag = agentConfig.agents.find((a) => a.id === agentId);
+    const draft = chMap[agentId];
+    if (!ag || !draft) return false;
+    const cur = ag.channel;
+    if (!cur) return !!(draft.platform && draft.channelId);
+    return (
+      draft.platform !== (cur.platform || '') ||
+      draft.guildId !== (cur.guildId || '') ||
+      draft.channelId !== (cur.channelId || '') ||
+      draft.label !== (cur.label || '')
+    );
+  };
+
+  const applyChannel = async (agentId: string) => {
+    const draft = chMap[agentId];
+    if (!draft?.platform) return;
+    setChStatus((p) => ({ ...p, [agentId]: { cls: 'pending', text: '⟳ 保存中…' } }));
+    try {
+      const r = await api.setChannel(agentId, {
+        platform: draft.platform,
+        guildId: draft.guildId || undefined,
+        channelId: draft.channelId || undefined,
+        label: draft.label || undefined,
+      });
+      if (r.ok) {
+        setChStatus((p) => ({ ...p, [agentId]: { cls: 'ok', text: '✅ 渠道已保存' } }));
+        toast(agentId + ' 渠道已更新', 'ok');
+        setTimeout(() => loadAgentConfig(), 1500);
+      } else {
+        setChStatus((p) => ({ ...p, [agentId]: { cls: 'err', text: '❌ ' + (r.error || '错误') } }));
+      }
+    } catch {
+      setChStatus((p) => ({ ...p, [agentId]: { cls: 'err', text: '❌ 无法连接服务器' } }));
+    }
+  };
+
+  const resetChannel = (agentId: string) => {
+    const ag = agentConfig.agents.find((a) => a.id === agentId);
+    if (ag) setChMap((p) => ({ ...p, [agentId]: emptyDraft(ag.channel) }));
+    setChStatus((p) => {
+      const n = { ...p };
+      delete n[agentId];
+      return n;
+    });
+  };
+
   return (
     <div>
       <div className="model-grid">
@@ -80,6 +151,10 @@ export default function ModelConfig() {
           const sel = selMap[ag.id] || ag.model;
           const changed = sel !== ag.model;
           const st = statusMap[ag.id];
+          const draft = chMap[ag.id] || emptyDraft();
+          const chSt = chStatus[ag.id];
+          const chChanged = isChChanged(ag.id);
+          const showChannelId = draft.platform === 'discord';
           return (
             <div className="mc-card" key={ag.id}>
               <div className="mc-top">
@@ -92,8 +167,10 @@ export default function ModelConfig() {
                   <div className="mc-role">{ag.role}</div>
                 </div>
               </div>
+
+              {/* Model Section */}
               <div className="mc-cur">
-                当前: <b>{ag.model}</b>
+                当前模型: <b>{ag.model}</b>
               </div>
               <select className="msel" value={sel} onChange={(e) => handleSelect(ag.id, e.target.value)}>
                 {models.map((m) => (
@@ -111,6 +188,65 @@ export default function ModelConfig() {
                 </button>
               </div>
               {st && <div className={`mc-st ${st.cls}`}>{st.text}</div>}
+
+              {/* Channel Section */}
+              <div style={{ borderTop: '1px solid var(--border, #333)', marginTop: 10, paddingTop: 8 }}>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
+                  消息渠道
+                  {ag.channel?.channelId && (
+                    <span style={{ marginLeft: 6, color: 'var(--accent, #6a9eff)' }}>
+                      {ag.channel.label || `channel:${ag.channel.channelId}`}
+                    </span>
+                  )}
+                </div>
+                <select
+                  className="msel"
+                  value={draft.platform}
+                  onChange={(e) => updateChField(ag.id, 'platform', e.target.value)}
+                  style={{ marginBottom: 4 }}
+                >
+                  {PLATFORMS.map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </select>
+                {showChannelId && (
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                    <input
+                      className="msel"
+                      type="text"
+                      placeholder="服务器 ID (Guild ID)"
+                      value={draft.guildId}
+                      onChange={(e) => updateChField(ag.id, 'guildId', e.target.value)}
+                      style={{ flex: 1, fontSize: 12, padding: '4px 6px' }}
+                    />
+                    <input
+                      className="msel"
+                      type="text"
+                      placeholder="频道 ID (Channel ID)"
+                      value={draft.channelId}
+                      onChange={(e) => updateChField(ag.id, 'channelId', e.target.value)}
+                      style={{ flex: 1, fontSize: 12, padding: '4px 6px' }}
+                    />
+                  </div>
+                )}
+                <input
+                  className="msel"
+                  type="text"
+                  placeholder="备注 (如: 我的服务器 / #太子殿)"
+                  value={draft.label}
+                  onChange={(e) => updateChField(ag.id, 'label', e.target.value)}
+                  style={{ marginBottom: 4, fontSize: 12, padding: '4px 6px' }}
+                />
+                <div className="mc-btns">
+                  <button className="btn btn-p" disabled={!chChanged} onClick={() => applyChannel(ag.id)}>
+                    保存渠道
+                  </button>
+                  <button className="btn btn-g" onClick={() => resetChannel(ag.id)}>
+                    重置
+                  </button>
+                </div>
+                {chSt && <div className={`mc-st ${chSt.cls}`}>{chSt.text}</div>}
+              </div>
             </div>
           );
         })}

@@ -85,6 +85,8 @@ export const api = {
   // 操作类
   setModel: (agentId: string, model: string) =>
     postJ<ActionResult>(`${API_BASE}/api/set-model`, { agentId, model }),
+  setChannel: (agentId: string, channel: AgentChannelConfig) =>
+    postJ<ActionResult>(`${API_BASE}/api/set-channel`, { agentId, ...channel }),
   agentWake: (agentId: string) =>
     postJ<ActionResult>(`${API_BASE}/api/agent-wake`, { agentId }),
   taskAction: (taskId: string, action: string, reason: string) =>
@@ -196,6 +198,13 @@ export interface LiveStatus {
   syncStatus: SyncStatus;
 }
 
+export interface AgentChannelConfig {
+  platform: string;
+  guildId?: string;
+  channelId?: string;
+  label?: string;
+}
+
 export interface AgentInfo {
   id: string;
   label: string;
@@ -203,6 +212,7 @@ export interface AgentInfo {
   role: string;
   model: string;
   skills: SkillInfo[];
+  channel?: AgentChannelConfig;
 }
 
 export interface SkillInfo {

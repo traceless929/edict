@@ -136,6 +136,19 @@ def main():
             'isDefaultModel': True,
         })
 
+    # 合并 per-agent 渠道配置
+    channels_file = DATA / 'agent_channels.json'
+    agent_channels = {}
+    try:
+        if channels_file.exists():
+            agent_channels = json.loads(channels_file.read_text())
+    except Exception:
+        pass
+    for ag in result:
+        ch = agent_channels.get(ag['id'])
+        if ch and isinstance(ch, dict):
+            ag['channel'] = ch
+
     payload = {
         'generatedAt': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'defaultModel': default_model,
