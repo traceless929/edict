@@ -70,13 +70,13 @@ def cors_headers(h):
     req_origin = h.headers.get('Origin', '')
     if ALLOWED_ORIGIN:
         origin = ALLOWED_ORIGIN
-    elif req_origin in _DEFAULT_ORIGINS:
+    elif req_origin:
         origin = req_origin
     else:
-        origin = 'http://127.0.0.1:19527'
+        origin = '*'
     h.send_header('Access-Control-Allow-Origin', origin)
-    h.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    h.send_header('Access-Control-Allow-Headers', 'Content-Type')
+    h.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD')
+    h.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
 
 def _check_auth(handler):
@@ -94,10 +94,13 @@ def _check_auth(handler):
             token = param[6:]
             if secrets.compare_digest(token, AUTH_TOKEN):
                 return True
+    body = json.dumps({'ok': False, 'error': '未授权'}, ensure_ascii=False).encode()
     handler.send_response(401)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
+    handler.send_header('Content-Length', str(len(body)))
+    cors_headers(handler)
     handler.end_headers()
-    handler.wfile.write(json.dumps({'ok': False, 'error': '未授权'}, ensure_ascii=False).encode())
+    handler.wfile.write(body)
     return False
 
 
