@@ -2102,6 +2102,19 @@ class Handler(BaseHTTPRequestHandler):
         cors_headers(self)
         self.end_headers()
 
+    def do_HEAD(self):
+        p = urlparse(self.path).path.rstrip('/')
+        if p == '/healthz':
+            self.send_response(200)
+        elif p.startswith('/api/'):
+            if not _check_auth(self):
+                return
+            self.send_response(200)
+        else:
+            self.send_response(200)
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
     def send_json(self, data, code=200):
         try:
             body = json.dumps(data, ensure_ascii=False).encode()

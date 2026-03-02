@@ -199,8 +199,8 @@ curl -s http://localhost:19527/api/live-status | python3 -m json.tool | head -20
 
 ## 📬 联系方式
 
-- GitHub Issues: [提交问题](https://github.com/cft0808/edict/issues)
-- GitHub Discussions: [社区讨论](https://github.com/cft0808/edict/discussions)
+- GitHub Issues: [提交问题](https://github.com/traceless929/edict/issues)
+- GitHub Discussions: [社区讨论](https://github.com/traceless929/edict/discussions)
 
 ---
 

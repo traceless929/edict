@@ -254,7 +254,7 @@ docker run -p 19527:19527 cft0808/edict
 #### 安装
 
 ```bash
-git clone https://github.com/cft0808/edict.git
+git clone https://github.com/traceless929/edict.git
 cd edict
 chmod +x install.sh && ./install.sh
 ```
@@ -621,9 +621,9 @@ curl http://localhost:19527/api/remote-skills-list
 
 如果这个项目让你会心一笑，请给个 Star ⚔️
 
-[![Star History Chart](https://api.star-history.com/svg?repos=cft0808/edict&type=Date)](https://star-history.com/#cft0808/edict&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=traceless929/edict&type=Date)](https://star-history.com/#traceless929/edict&Date)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=cft0808/edict&type=Date)](https://star-history.com/#cft0808/edict&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=traceless929/edict&type=Date)](https://star-history.com/#traceless929/edict&Date)
 
 ---
 

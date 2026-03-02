@@ -25,7 +25,7 @@ openclaw init
 ## 第二步：克隆并安装三省六部
 
 ```bash
-git clone https://github.com/cft0808/edict.git
+git clone https://github.com/traceless929/edict.git
 cd edict
 chmod +x install.sh && ./install.sh
 ```
@@ -176,7 +176,7 @@ openclaw gateway restart
 
 ## 📚 更多资源
 
-- [🏠 项目首页](https://github.com/cft0808/edict)
+- [🏠 项目首页](https://github.com/traceless929/edict)
 - [📖 README](../README.md)
 - [🤝 贡献指南](../CONTRIBUTING.md)
 - [💬 OpenClaw 文档](https://docs.openclaw.ai)

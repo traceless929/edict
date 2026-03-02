@@ -194,7 +194,7 @@ Open http://localhost:19527
 **Prerequisites:** [OpenClaw](https://openclaw.ai) · Python 3.9+ · macOS/Linux
 
 ```bash
-git clone https://github.com/cft0808/edict.git
+git clone https://github.com/traceless929/edict.git
 cd edict
 chmod +x install.sh && ./install.sh
 ```
@@ -419,4 +419,4 @@ Each case includes: Full command → Planning proposal → Review feedback → M
   <sub>以古制御新技，以智慧驾驭 AI</sub>
 </p>
 
-[![Star History Chart](https://api.star-history.com/svg?repos=cft0808/edict&type=Date)](https://star-history.com/#cft0808/edict&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=traceless929/edict&type=Date)](https://star-history.com/#traceless929/edict&Date)
