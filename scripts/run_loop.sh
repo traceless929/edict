@@ -6,6 +6,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INTERVAL="${1:-15}"
+DASHBOARD_PORT="${DASHBOARD_PORT:-19527}"
+DASHBOARD_AUTH="${DASHBOARD_AUTH_TOKEN:-}"
 LOG="/tmp/sansheng_liubu_refresh.log"
 PIDFILE="/tmp/sansheng_liubu_refresh.pid"
 MAX_LOG_SIZE=$((10 * 1024 * 1024))  # 10MB
@@ -60,8 +62,10 @@ while true; do
   SCAN_COUNTER=$((SCAN_COUNTER + INTERVAL))
   if (( SCAN_COUNTER >= SCAN_INTERVAL )); then
     SCAN_COUNTER=0
-    curl -s -X POST http://127.0.0.1:7891/api/scheduler-scan \
-      -H 'Content-Type: application/json' -d '{"thresholdSec":180}' >> "$LOG" 2>&1 || true
+    AUTH_HDR=""
+    [[ -n "$DASHBOARD_AUTH" ]] && AUTH_HDR="-H \"Authorization: Bearer $DASHBOARD_AUTH\""
+    eval curl -s -X POST "http://127.0.0.1:${DASHBOARD_PORT}/api/scheduler-scan" \
+      -H 'Content-Type: application/json' $AUTH_HDR -d '{"thresholdSec":180}' >> "$LOG" 2>&1 || true
   fi
 
   sleep "$INTERVAL"

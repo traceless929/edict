@@ -1,6 +1,6 @@
 # ⚔️ 三省六部 · Demo Dashboard
-# docker run -p 7891:7891 cft0808/sansheng-demo
-# Then open: http://localhost:7891
+# docker run -p 19527:19527 cft0808/sansheng-demo
+# Then open: http://localhost:19527
 
 # Stage 1: 构建 React 前端
 FROM node:20-alpine AS frontend-build
@@ -31,9 +31,9 @@ RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 7891
+EXPOSE 19527
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7891/healthz')" || exit 1
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:19527/healthz')" || exit 1
 
-CMD ["python3", "dashboard/server.py", "--host", "0.0.0.0", "--port", "7891"]
+CMD ["python3", "dashboard/server.py", "--host", "0.0.0.0", "--port", "19527"]

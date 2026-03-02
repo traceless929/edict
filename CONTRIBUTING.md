@@ -72,10 +72,10 @@ bash scripts/run_loop.sh &
 python3 dashboard/server.py
 
 # 打开浏览器
-open http://127.0.0.1:7891
+open http://127.0.0.1:19527
 ```
 
-> 💡 **前端开发模式**：`cd edict/frontend && npm run dev` → http://localhost:5173（热重载，自动代理 API 到 7891）
+> 💡 **前端开发模式**：`cd edict/frontend && npm run dev` → http://localhost:5173（热重载，自动代理 API 到 19527）
 
 ### 项目结构速览
 
@@ -171,7 +171,7 @@ python3 scripts/sync_agent_config.py
 
 # 启动服务器验证 API
 python3 dashboard/server.py &
-curl -s http://localhost:7891/api/live-status | python3 -m json.tool | head -20
+curl -s http://localhost:19527/api/live-status | python3 -m json.tool | head -20
 ```
 
 ---
