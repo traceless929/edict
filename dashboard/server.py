@@ -29,6 +29,9 @@ OCLAW_HOME = pathlib.Path.home() / '.openclaw'
 MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MB
 ALLOWED_ORIGIN = None  # Set via --cors; None means restrict to localhost
 AUTH_TOKEN = None  # Set via --auth-token or auto-generated
+
+# Agent 派发渠道配置: discord, telegram, feishu, or None (使用 openclaw 默认)
+_DELIVERY_CHANNEL = os.environ.get('EDICT_CHANNEL', 'discord')
 _DEFAULT_ORIGINS = {
     'http://127.0.0.1:19527', 'http://localhost:19527',
     'http://127.0.0.1:5173', 'http://localhost:5173',  # Vite dev server
@@ -1983,7 +1986,7 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
                 }))
                 return
             cmd = ['openclaw', 'agent', '--agent', agent_id, '-m', msg,
-                   '--deliver', '--channel', 'feishu', '--timeout', '300']
+                   '--deliver', '--channel', _DELIVERY_CHANNEL, '--timeout', '300']
             max_retries = 2
             err = ''
             for attempt in range(1, max_retries + 1):
