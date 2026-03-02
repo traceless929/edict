@@ -2519,16 +2519,30 @@ def main():
     parser.add_argument('--port', type=int, default=19527)
     parser.add_argument('--host', default='0.0.0.0')
     parser.add_argument('--cors', default=None, help='Allowed CORS origin (default: reflect request Origin header)')
-    parser.add_argument('--auth-token', default=None, help='Auth token for API access (auto-generated if omitted)')
+    parser.add_argument('--auth-token', default=None, help='Auth token for API access (loaded from file or auto-generated)')
+    parser.add_argument('--regen-token', action='store_true', help='Force regenerate auth token')
     args = parser.parse_args()
 
     global ALLOWED_ORIGIN, AUTH_TOKEN
     ALLOWED_ORIGIN = args.cors
-    AUTH_TOKEN = args.auth_token or secrets.token_urlsafe(32)
+
+    token_file = DATA / '.auth_token'
+    if args.auth_token:
+        AUTH_TOKEN = args.auth_token
+        token_file.write_text(AUTH_TOKEN)
+    elif args.regen_token or not token_file.exists():
+        AUTH_TOKEN = secrets.token_urlsafe(32)
+        DATA.mkdir(parents=True, exist_ok=True)
+        token_file.write_text(AUTH_TOKEN)
+        if args.regen_token:
+            log.info('🔑 已重新生成 Auth Token')
+    else:
+        AUTH_TOKEN = token_file.read_text().strip()
 
     server = HTTPServer((args.host, args.port), Handler)
     log.info(f'三省六部看板启动 → http://{args.host}:{args.port}')
     print(f'   🔑 Auth Token: {AUTH_TOKEN}')
+    print(f'   📁 Token 文件: {token_file}')
     print(f'   按 Ctrl+C 停止')
 
     # 启动恢复：重新派发上次被 kill 中断的 queued 任务
