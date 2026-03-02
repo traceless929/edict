@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useStore, TAB_DEFS, startPolling, stopPolling, isEdict, isArchived } from './store';
+import AuthGate from './components/AuthGate';
 import EdictBoard from './components/EdictBoard';
 import MonitorPanel from './components/MonitorPanel';
 import OfficialPanel from './components/OfficialPanel';
@@ -10,7 +11,6 @@ import MemorialPanel from './components/MemorialPanel';
 import TemplatePanel from './components/TemplatePanel';
 import MorningPanel from './components/MorningPanel';
 import TaskModal from './components/TaskModal';
-// ConfirmDialog is used inside TaskModal as needed
 import Toaster from './components/Toaster';
 import CourtCeremony from './components/CourtCeremony';
 
@@ -46,54 +46,56 @@ export default function App() {
   };
 
   return (
-    <div className="wrap">
-      {/* ── Header ── */}
-      <div className="hdr">
-        <div>
-          <div className="logo">三省六部 · 总控台</div>
-          <div className="sub-text">OpenClaw Sansheng-Liubu Dashboard</div>
-        </div>
-        <div className="hdr-r">
-          <span className={`chip ${syncOk ? 'ok' : syncOk === false ? 'err' : ''}`}>
-            {syncOk ? '✅ 同步正常' : syncOk === false ? '❌ 服务器未启动' : '⏳ 连接中…'}
-          </span>
-          <span className="chip">{activeEdicts.length} 道旨意</span>
-          <button className="btn-refresh" onClick={() => loadAll()}>
-            ⟳ 刷新
-          </button>
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>⟳ {countdown}s</span>
-        </div>
-      </div>
-
-      {/* ── Tabs ── */}
-      <div className="tabs">
-        {TAB_DEFS.map((t) => (
-          <div
-            key={t.key}
-            className={`tab ${activeTab === t.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(t.key)}
-          >
-            {t.icon} {t.label}
-            {tabBadge(t.key) && <span className="tbadge">{tabBadge(t.key)}</span>}
+    <AuthGate>
+      <div className="wrap">
+        {/* ── Header ── */}
+        <div className="hdr">
+          <div>
+            <div className="logo">三省六部 · 总控台</div>
+            <div className="sub-text">OpenClaw Sansheng-Liubu Dashboard</div>
           </div>
-        ))}
+          <div className="hdr-r">
+            <span className={`chip ${syncOk ? 'ok' : syncOk === false ? 'err' : ''}`}>
+              {syncOk ? '✅ 同步正常' : syncOk === false ? '❌ 服务器未启动' : '⏳ 连接中…'}
+            </span>
+            <span className="chip">{activeEdicts.length} 道旨意</span>
+            <button className="btn-refresh" onClick={() => loadAll()}>
+              ⟳ 刷新
+            </button>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>⟳ {countdown}s</span>
+          </div>
+        </div>
+
+        {/* ── Tabs ── */}
+        <div className="tabs">
+          {TAB_DEFS.map((t) => (
+            <div
+              key={t.key}
+              className={`tab ${activeTab === t.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(t.key)}
+            >
+              {t.icon} {t.label}
+              {tabBadge(t.key) && <span className="tbadge">{tabBadge(t.key)}</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Panels ── */}
+        {activeTab === 'edicts' && <EdictBoard />}
+        {activeTab === 'monitor' && <MonitorPanel />}
+        {activeTab === 'officials' && <OfficialPanel />}
+        {activeTab === 'models' && <ModelConfig />}
+        {activeTab === 'skills' && <SkillsConfig />}
+        {activeTab === 'sessions' && <SessionsPanel />}
+        {activeTab === 'memorials' && <MemorialPanel />}
+        {activeTab === 'templates' && <TemplatePanel />}
+        {activeTab === 'morning' && <MorningPanel />}
+
+        {/* ── Overlays ── */}
+        <TaskModal />
+        <Toaster />
+        <CourtCeremony />
       </div>
-
-      {/* ── Panels ── */}
-      {activeTab === 'edicts' && <EdictBoard />}
-      {activeTab === 'monitor' && <MonitorPanel />}
-      {activeTab === 'officials' && <OfficialPanel />}
-      {activeTab === 'models' && <ModelConfig />}
-      {activeTab === 'skills' && <SkillsConfig />}
-      {activeTab === 'sessions' && <SessionsPanel />}
-      {activeTab === 'memorials' && <MemorialPanel />}
-      {activeTab === 'templates' && <TemplatePanel />}
-      {activeTab === 'morning' && <MorningPanel />}
-
-      {/* ── Overlays ── */}
-      <TaskModal />
-      <Toaster />
-      <CourtCeremony />
-    </div>
+    </AuthGate>
   );
 }

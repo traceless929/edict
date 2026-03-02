@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 三省六部 · 看板本地 API 服务器
-Port: 7891 (可通过 --port 修改)
+Port: 19527 (可通过 --port 修改)
 
 Endpoints:
   GET  /                       → dashboard.html
@@ -11,7 +11,7 @@ Endpoints:
   GET  /api/model-change-log   → data/model_change_log.json
   GET  /api/last-result        → data/last_model_change_result.json
 """
-import json, pathlib, subprocess, sys, threading, argparse, datetime, logging, re, os
+import json, pathlib, subprocess, sys, threading, argparse, datetime, logging, re, os, secrets
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -28,8 +28,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message
 OCLAW_HOME = pathlib.Path.home() / '.openclaw'
 MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MB
 ALLOWED_ORIGIN = None  # Set via --cors; None means restrict to localhost
+AUTH_TOKEN = None  # Set via --auth-token or auto-generated
 _DEFAULT_ORIGINS = {
-    'http://127.0.0.1:7891', 'http://localhost:7891',
+    'http://127.0.0.1:19527', 'http://localhost:19527',
     'http://127.0.0.1:5173', 'http://localhost:5173',  # Vite dev server
 }
 _SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9_\-\u4e00-\u9fff]+$')
@@ -72,10 +73,32 @@ def cors_headers(h):
     elif req_origin in _DEFAULT_ORIGINS:
         origin = req_origin
     else:
-        origin = 'http://127.0.0.1:7891'
+        origin = 'http://127.0.0.1:19527'
     h.send_header('Access-Control-Allow-Origin', origin)
     h.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     h.send_header('Access-Control-Allow-Headers', 'Content-Type')
+
+
+def _check_auth(handler):
+    """校验请求中的 auth token。返回 True 表示通过，False 表示失败（已发送 401）。"""
+    if not AUTH_TOKEN:
+        return True
+    auth_header = handler.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:].strip()
+        if secrets.compare_digest(token, AUTH_TOKEN):
+            return True
+    query = urlparse(handler.path).query
+    for param in query.split('&'):
+        if param.startswith('token='):
+            token = param[6:]
+            if secrets.compare_digest(token, AUTH_TOKEN):
+                return True
+    handler.send_response(401)
+    handler.send_header('Content-Type', 'application/json; charset=utf-8')
+    handler.end_headers()
+    handler.wfile.write(json.dumps({'ok': False, 'error': '未授权'}, ensure_ascii=False).encode())
+    return False
 
 
 def now_iso():
@@ -510,7 +533,7 @@ def push_to_feishu():
             'header': {'title': {'tag': 'plain_text', 'content': f'📰 天下要闻 · {date_fmt}'}, 'template': 'blue'},
             'elements': [
                 {'tag': 'div', 'text': {'tag': 'lark_md', 'content': f'共 **{total}** 条要闻已更新\n{summary}'}},
-                {'tag': 'action', 'actions': [{'tag': 'button', 'text': {'tag': 'plain_text', 'content': '🔗 查看完整简报'}, 'url': 'http://127.0.0.1:7891', 'type': 'primary'}]},
+                {'tag': 'action', 'actions': [{'tag': 'button', 'text': {'tag': 'plain_text', 'content': '🔗 查看完整简报'}, 'url': 'http://127.0.0.1:19527', 'type': 'primary'}]},
                 {'tag': 'note', 'elements': [{'tag': 'plain_text', 'content': f"采集于 {brief.get('generated_at', '')}"}]}
             ]
         }
@@ -2128,7 +2151,26 @@ class Handler(BaseHTTPRequestHandler):
             checks['dataWritable'] = os.access(str(DATA), os.W_OK)
             all_ok = all(checks.values())
             self.send_json({'status': 'ok' if all_ok else 'degraded', 'ts': now_iso(), 'checks': checks})
-        elif p == '/api/live-status':
+        elif p == '/api/auth/verify':
+            if not _check_auth(self):
+                return
+            self.send_json({'ok': True})
+        elif p.startswith('/api/'):
+            if not _check_auth(self):
+                return
+            self._do_api_get(p)
+        elif self._serve_static(p):
+            pass
+        else:
+            if not p.startswith('/api/'):
+                idx = DIST / 'index.html'
+                if idx.exists():
+                    self.send_file(idx)
+                    return
+            self.send_error(404)
+
+    def _do_api_get(self, p):
+        if p == '/api/live-status':
             self.send_json(read_json(DATA / 'live_status.json'))
         elif p == '/api/agent-config':
             self.send_json(read_json(DATA / 'agent_config.json'))
@@ -2187,19 +2229,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'ok': False, 'error': 'invalid agent_id'}, 400)
             else:
                 self.send_json({'ok': True, 'agentId': agent_id, 'activity': get_agent_activity(agent_id)})
-        elif self._serve_static(p):
-            pass  # 已由 _serve_static 处理 (JS/CSS/图片等)
         else:
-            # SPA fallback：非 /api/ 路径返回 index.html
-            if not p.startswith('/api/'):
-                idx = DIST / 'index.html'
-                if idx.exists():
-                    self.send_file(idx)
-                    return
             self.send_error(404)
 
     def do_POST(self):
         p = urlparse(self.path).path.rstrip('/')
+        if not _check_auth(self):
+            return
         length = int(self.headers.get('Content-Length', 0))
         if length > MAX_REQUEST_BODY:
             self.send_json({'ok': False, 'error': f'Request body too large (max {MAX_REQUEST_BODY} bytes)'}, 413)
@@ -2464,16 +2500,19 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description='三省六部看板服务器')
-    parser.add_argument('--port', type=int, default=7891)
-    parser.add_argument('--host', default='127.0.0.1')
+    parser.add_argument('--port', type=int, default=19527)
+    parser.add_argument('--host', default='0.0.0.0')
     parser.add_argument('--cors', default=None, help='Allowed CORS origin (default: reflect request Origin header)')
+    parser.add_argument('--auth-token', default=None, help='Auth token for API access (auto-generated if omitted)')
     args = parser.parse_args()
 
-    global ALLOWED_ORIGIN
+    global ALLOWED_ORIGIN, AUTH_TOKEN
     ALLOWED_ORIGIN = args.cors
+    AUTH_TOKEN = args.auth_token or secrets.token_urlsafe(32)
 
     server = HTTPServer((args.host, args.port), Handler)
     log.info(f'三省六部看板启动 → http://{args.host}:{args.port}')
+    print(f'   🔑 Auth Token: {AUTH_TOKEN}')
     print(f'   按 Ctrl+C 停止')
 
     # 启动恢复：重新派发上次被 kill 中断的 queued 任务

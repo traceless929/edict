@@ -1,14 +1,45 @@
 /**
  * API 层 — 对接 dashboard/server.py
- * 生产环境从同源 (port 7891) 请求，开发环境可通过 VITE_API_URL 指定
+ * 生产环境从同源 (port 19527) 请求，开发环境可通过 VITE_API_URL 指定
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
+const AUTH_TOKEN_KEY = 'edict_auth_token';
+
+// ── Auth Token 管理 ──
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+let onAuthFailure: (() => void) | null = null;
+
+export function setOnAuthFailure(cb: () => void): void {
+  onAuthFailure = cb;
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 // ── 通用请求 ──
 
 async function fetchJ<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { cache: 'no-store', headers: { ...authHeaders() } });
+  if (res.status === 401) {
+    clearAuthToken();
+    onAuthFailure?.();
+    throw new Error('401');
+  }
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
@@ -16,9 +47,14 @@ async function fetchJ<T>(url: string): Promise<T> {
 async function postJ<T>(url: string, data: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   });
+  if (res.status === 401) {
+    clearAuthToken();
+    onAuthFailure?.();
+    throw new Error('401');
+  }
   return res.json();
 }
 
@@ -93,6 +129,12 @@ export const api = {
 
   createTask: (data: CreateTaskPayload) =>
     postJ<ActionResult & { taskId?: string }>(`${API_BASE}/api/create-task`, data),
+
+  verifyToken: (token: string) =>
+    fetch(`${API_BASE}/api/auth/verify`, {
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((res) => ({ ok: res.status === 200 })),
 };
 
 // ── Types ──
