@@ -46,19 +46,6 @@ export default function MonitorPanel() {
     setTimeout(() => loadAgentsStatus(), 30000);
   };
 
-  const handleBroadcast = async () => {
-    if (!confirm('昭告天下：向所有臣工发送上报状态指令？')) return;
-    try {
-      const r = await api.broadcastWake();
-      if (r.ok) {
-        toast(`📢 ${r.message || '昭告天下完成'}（${r.sent?.length || 0} 个臣工）`);
-        setTimeout(() => loadAgentsStatus(), 30000);
-      } else {
-        toast(r.error || '昭告失败', 'err');
-      }
-    } catch { toast('服务器连接失败', 'err'); }
-  };
-
   // Agent Status Panel
   const asData = agentsStatusData;
   const filtered = asData?.agents?.filter((a) => a.id !== 'main') || [];
@@ -85,9 +72,6 @@ export default function MonitorPanel() {
                 ⚡ 全部唤醒
               </button>
             )}
-            <button className="btn-refresh" onClick={handleBroadcast} style={{ marginLeft: 4, borderColor: 'var(--acc)', color: 'var(--acc)' }}>
-              📢 昭告天下
-            </button>
           </div>
           <div className="as-grid">
             {filtered.map((a) => {

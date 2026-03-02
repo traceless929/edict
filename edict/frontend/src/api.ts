@@ -89,10 +89,6 @@ export const api = {
     postJ<ActionResult>(`${API_BASE}/api/set-channel`, { agentId, ...channel }),
   agentWake: (agentId: string) =>
     postJ<ActionResult>(`${API_BASE}/api/agent-wake`, { agentId }),
-  broadcastWake: (message?: string) =>
-    postJ<ActionResult & { sent?: string[]; skipped?: string[] }>(
-      `${API_BASE}/api/broadcast-wake`, { message: message || '' }
-    ),
   taskAction: (taskId: string, action: string, reason: string) =>
     postJ<ActionResult>(`${API_BASE}/api/task-action`, { taskId, action, reason }),
   reviewAction: (taskId: string, action: string, comment: string) =>
