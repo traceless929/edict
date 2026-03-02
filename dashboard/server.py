@@ -914,6 +914,28 @@ def wake_agent(agent_id, message=''):
     return {'ok': True, 'message': f'{agent_id} 唤醒指令已发出，约10-30秒后生效'}
 
 
+def broadcast_all_agents(message=''):
+    """昭告天下：向所有已配置的 Agent 广播消息，要求上报状态。"""
+    if not _check_gateway_alive():
+        return {'ok': False, 'error': 'Gateway 未启动，请先运行 openclaw gateway start'}
+    msg = message or f'📢 昭告天下 — 皇上要求所有臣工立即上报状态。当前时间: {now_iso()}'
+    sent = []
+    skipped = []
+    for dept in _AGENT_DEPTS:
+        aid = dept['id']
+        if not _check_agent_workspace(aid):
+            skipped.append(aid)
+            continue
+        wake_agent(aid, msg)
+        sent.append(aid)
+    return {
+        'ok': True,
+        'message': f'昭告天下：已向 {len(sent)} 个臣工发出指令',
+        'sent': sent,
+        'skipped': skipped,
+    }
+
+
 # ══ Agent 实时活动读取 ══
 
 # 状态 → agent_id 映射
@@ -2517,6 +2539,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'ok': False, 'error': 'agentId required'}, 400)
                 return
             result = wake_agent(agent_id, message)
+            self.send_json(result)
+            return
+
+        if p == '/api/broadcast-wake':
+            message = body.get('message', '').strip()
+            result = broadcast_all_agents(message)
             self.send_json(result)
             return
 
