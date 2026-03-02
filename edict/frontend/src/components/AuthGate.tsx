@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { api, getAuthToken, setAuthToken, clearAuthToken, setOnAuthFailure } from '../api';
 
+function extractUrlToken(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('token');
+}
+
+function cleanUrlToken() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('token');
+  window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+}
+
 export default function AuthGate({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -17,22 +28,48 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setOnAuthFailure(logout);
-    const saved = getAuthToken();
-    if (!saved) {
-      setChecking(false);
-      return;
-    }
-    api.verifyToken(saved).then((r) => {
-      if (r.ok) {
-        setAuthed(true);
-      } else {
+
+    const tryVerify = async (candidate: string): Promise<boolean> => {
+      try {
+        const r = await api.verifyToken(candidate);
+        if (r.ok) {
+          setAuthToken(candidate);
+          setAuthed(true);
+          return true;
+        }
+      } catch { /* ignore */ }
+      return false;
+    };
+
+    const init = async () => {
+      // 1) URL ?token=xxx 优先
+      const urlToken = extractUrlToken();
+      if (urlToken) {
+        cleanUrlToken();
+        if (await tryVerify(urlToken)) {
+          setChecking(false);
+          return;
+        }
+        setError('URL 中的令牌无效');
+        clearAuthToken();
+        setChecking(false);
+        return;
+      }
+
+      // 2) localStorage 缓存
+      const saved = getAuthToken();
+      if (saved) {
+        if (await tryVerify(saved)) {
+          setChecking(false);
+          return;
+        }
         clearAuthToken();
       }
+
       setChecking(false);
-    }).catch(() => {
-      clearAuthToken();
-      setChecking(false);
-    });
+    };
+
+    init();
   }, [logout]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,7 +128,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             {submitting ? '验证中…' : '进入看板'}
           </button>
         </form>
-        <p className="auth-hint">令牌在服务器启动时显示于控制台</p>
+        <p className="auth-hint">
+          令牌在服务器启动时显示于控制台<br />
+          也可通过 URL 传入：?token=xxx
+        </p>
       </div>
     </div>
   );
