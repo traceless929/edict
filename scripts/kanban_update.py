@@ -79,6 +79,7 @@ def now_iso():
     return datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
 
 def find_task(tasks, task_id):
+    log.info(f'TASKS_FILE = {TASKS_FILE}')
     return next((t for t in tasks if t.get('id') == task_id), None)
 
 
