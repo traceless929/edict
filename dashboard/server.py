@@ -25,6 +25,15 @@ from utils import validate_url
 log = logging.getLogger('server')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s', datefmt='%H:%M:%S')
 
+def logged_run(cmd, **kwargs):
+    """subprocess.run wrapper: log the command before execution."""
+    if isinstance(cmd, (list, tuple)):
+        cmd_str = ' '.join(str(c) for c in cmd)
+    else:
+        cmd_str = str(cmd)
+    log.info(f'[exec] {cmd_str}')
+    return subprocess.run(cmd, **kwargs)
+
 OCLAW_HOME = pathlib.Path.home() / '.openclaw'
 MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MB
 ALLOWED_ORIGIN = None  # Set via --cors; None means restrict to localhost
@@ -145,7 +154,7 @@ def save_tasks(tasks):
     # Trigger refresh (异步，不阻塞，避免僵尸进程)
     def _refresh():
         try:
-            subprocess.run(['python3', str(SCRIPTS / 'refresh_live_data.py')], timeout=30)
+            logged_run(['python3', str(SCRIPTS / 'refresh_live_data.py')], timeout=30)
         except Exception as e:
             log.warning(f'refresh_live_data.py 触发失败: {e}')
     threading.Thread(target=_refresh, daemon=True).start()
@@ -296,7 +305,7 @@ def add_skill_to_agent(agent_id, skill_name, description, trigger=''):
     skill_md.write_text(template)
     # Re-sync agent config
     try:
-        subprocess.run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
+        logged_run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
     except Exception:
         pass
     return {'ok': True, 'message': f'技能 {skill_name} 已添加到 {agent_id}', 'path': str(skill_md)}
@@ -405,7 +414,7 @@ def add_remote_skill(agent_id, skill_name, source_url, description=''):
     
     # Re-sync agent config
     try:
-        subprocess.run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
+        logged_run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
     except Exception:
         pass
     
@@ -523,7 +532,7 @@ def remove_remote_skill(agent_id, skill_name):
         
         # Re-sync agent config
         try:
-            subprocess.run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
+            logged_run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
         except Exception:
             pass
         
@@ -726,7 +735,7 @@ _AGENT_DEPTS = [
 def _check_gateway_alive():
     """检测 Gateway 进程是否在运行。"""
     try:
-        result = subprocess.run(['pgrep', '-f', 'openclaw-gateway'],
+        result = logged_run(['pgrep', '-f', 'openclaw-gateway'],
                                 capture_output=True, text=True, timeout=5)
         return result.returncode == 0
     except Exception:
@@ -771,7 +780,7 @@ def _get_agent_session_status(agent_id):
 def _check_agent_process(agent_id):
     """检测是否有该 Agent 的 openclaw-agent 进程正在运行。"""
     try:
-        result = subprocess.run(
+        result = logged_run(
             ['pgrep', '-f', f'openclaw.*--agent.*{agent_id}'],
             capture_output=True, text=True, timeout=5
         )
@@ -895,7 +904,7 @@ def wake_agent(agent_id, message=''):
             log.info(f'🔔 唤醒 {agent_id}...')
             # 带重试（最多2次）
             for attempt in range(1, 3):
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=130)
+                result = logged_run(cmd, capture_output=True, text=True, timeout=130)
                 if result.returncode == 0:
                     log.info(f'✅ {agent_id} 已唤醒')
                     return
@@ -2023,7 +2032,7 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
             err = ''
             for attempt in range(1, max_retries + 1):
                 log.info(f'🔄 自动派发 {task_id} → {agent_id} (第{attempt}次)...')
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=310)
+                result = logged_run(cmd, capture_output=True, text=True, timeout=310)
                 if result.returncode == 0:
                     log.info(f'✅ {task_id} 自动派发成功 → {agent_id}')
                     _update_task_scheduler(task_id, lambda t, s: (
@@ -2374,7 +2383,7 @@ class Handler(BaseHTTPRequestHandler):
                     cmd = ['python3', str(SCRIPTS / 'fetch_morning_news.py')]
                     if force:
                         cmd.append('--force')
-                    subprocess.run(cmd, timeout=120)
+                    logged_run(cmd, timeout=120)
                     push_to_feishu()
                 except Exception as e:
                     print(f'[refresh error] {e}', file=sys.stderr)
@@ -2538,8 +2547,8 @@ class Handler(BaseHTTPRequestHandler):
             # Async apply
             def apply_async():
                 try:
-                    subprocess.run(['python3', str(SCRIPTS / 'apply_model_changes.py')], timeout=30)
-                    subprocess.run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
+                    logged_run(['python3', str(SCRIPTS / 'apply_model_changes.py')], timeout=30)
+                    logged_run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
                 except Exception as e:
                     print(f'[apply error] {e}', file=sys.stderr)
 
@@ -2578,7 +2587,7 @@ class Handler(BaseHTTPRequestHandler):
             # 触发 sync 更新 agent_config.json
             def sync_async():
                 try:
-                    subprocess.run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
+                    logged_run(['python3', str(SCRIPTS / 'sync_agent_config.py')], timeout=10)
                 except Exception:
                     pass
             threading.Thread(target=sync_async, daemon=True).start()
