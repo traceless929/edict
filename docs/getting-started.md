@@ -48,7 +48,7 @@ chmod +x install.sh && ./install.sh
 # 查看当前渠道
 openclaw channels list
 
-# 添加飞书渠道（入口设为太子）
+# 添加Discord渠道（入口设为太子）
 openclaw channels add --type feishu --agent taizi
 ```
 
@@ -126,7 +126,7 @@ open http://127.0.0.1:19527
 
 ### 订阅天下要闻
 
-> 看板 → 📰 天下要闻 → ⚙️ 订阅管理 → 选择分类 / 添加源 / 配飞书推送
+> 看板 → 📰 天下要闻 → ⚙️ 订阅管理 → 选择分类 / 添加源 / 配Discord推送
 
 ---
 

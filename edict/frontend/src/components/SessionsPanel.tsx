@@ -41,6 +41,7 @@ function channelLabel(t: Task): { icon: string; text: string } {
   if (now.includes('feishu/direct')) return { icon: '💬', text: '飞书对话' };
   if (now.includes('feishu')) return { icon: '💬', text: '飞书' };
   if (now.includes('webchat')) return { icon: '🌐', text: 'WebChat' };
+  if (now.includes('discord')) return { icon: '🌐', text: 'Discord' };
   if (now.includes('cron')) return { icon: '⏰', text: '定时' };
   if (now.includes('direct')) return { icon: '📨', text: '直连' };
   return { icon: '🔗', text: '会话' };

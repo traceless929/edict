@@ -220,7 +220,7 @@ export default function EdictBoard() {
           <div className="empty" style={{ gridColumn: '1/-1' }}>
             暂无旨意<br />
             <small style={{ fontSize: 11, marginTop: 6, display: 'block', color: 'var(--muted)' }}>
-              通过飞书向太子发送任务，太子分拣后转中书省处理
+              通过Discord向太子发送任务，太子分拣后转中书省处理
             </small>
           </div>
         ) : (

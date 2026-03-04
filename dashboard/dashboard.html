@@ -731,7 +731,7 @@
 
   <!-- ══ 小任务/会话监控 ══ -->
   <div class="panel" id="panel-sessions">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">飞书/Telegram 中的日常对话与小任务 · 非JJC圣旨类任务</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Discord/Telegram 中的日常对话与小任务 · 非JJC圣旨类任务</div>
     <div class="sess-filters">
       <span style="font-size:11px;color:var(--muted)">筛选：</span>
       <span class="sess-filter active" data-sf="all" onclick="filterSessions('all',this)">全部</span>
@@ -816,12 +816,12 @@
         </div>
       </div>
       <div class="sub-section">
-        <div class="sub-sec-title">🔔 飞书推送</div>
+        <div class="sub-sec-title">🔔 Discord推送</div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <input id="feishu-webhook" class="sub-input" placeholder="飞书 Webhook URL（留空则不推送）" style="flex:1">
+          <input id="feishu-webhook" class="sub-input" placeholder="Discord Webhook URL（留空则不推送）" style="flex:1">
           <button class="btn btn-p" onclick="saveSubConfig()" style="font-size:12px;padding:6px 14px">保存全部配置</button>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px">采集完成后自动推送简报链接到飞书群。<a href="https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot" target="_blank" style="color:var(--acc)">如何创建自定义机器人？</a></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">采集完成后自动推送简报链接到Discord群。<a href="https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot" target="_blank" style="color:var(--acc)">如何创建自定义机器人？</a></div>
       </div>
       <div id="sub-status" style="font-size:12px;margin-top:8px;display:none"></div>
     </div>
@@ -996,7 +996,7 @@ function renderEdicts(tasks){
   document.getElementById('btn-archive-done').style.display = unArchivedDone.length ? '' : 'none';
   const el = document.getElementById('edict-grid');
   if(!edicts.length){
-    el.innerHTML='<div class="empty" style="grid-column:1/-1">暂无旨意<br><small style="font-size:11px;margin-top:6px;display:block;color:var(--muted)">通过飞书向太子发送任务，太子分拣后转中书省处理</small></div>';
+    el.innerHTML='<div class="empty" style="grid-column:1/-1">暂无旨意<br><small style="font-size:11px;margin-top:6px;display:block;color:var(--muted)">通过Discord向太子发送任务，太子分拣后转中书省处理</small></div>';
     return;
   }
   el.innerHTML = edicts.map(t => {
@@ -1970,8 +1970,8 @@ function humanTitle(t){
 /* 提取来源渠道 */
 function channelLabel(t){
   const now = t.now||'';
-  if(now.includes('feishu/direct')) return {icon:'💬', text:'飞书对话'};
-  if(now.includes('feishu'))        return {icon:'💬', text:'飞书'};
+  if(now.includes('feishu/direct')) return {icon:'💬', text:'Discord对话'};
+  if(now.includes('feishu'))        return {icon:'💬', text:'Discord'};
   if(now.includes('webchat'))       return {icon:'🌐', text:'WebChat'};
   if(now.includes('cron'))          return {icon:'⏰', text:'定时'};
   if(now.includes('direct'))        return {icon:'📨', text:'直连'};
@@ -2942,7 +2942,7 @@ const TEMPLATES = [
    params:[
      {key:'date_range', label:'报告周期', type:'text', default:'本周', required:true},
      {key:'focus', label:'重点关注（逗号分隔）', type:'text', default:'项目进展,下周计划'},
-     {key:'format', label:'输出格式', type:'select', options:['Markdown','飞书文档'], default:'Markdown'}
+     {key:'format', label:'输出格式', type:'select', options:['Markdown','Discord文档'], default:'Markdown'}
    ],
    command:'生成{date_range}的周报，重点覆盖{focus}，输出为{format}格式'},
   {id:'tpl-code-review', cat:'工程开发', icon:'🔍', name:'代码审查',

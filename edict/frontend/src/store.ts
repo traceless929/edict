@@ -145,7 +145,7 @@ export const TEMPLATES: Template[] = [
     params: [
       { key: 'date_range', label: '报告周期', type: 'text', default: '本周', required: true },
       { key: 'focus', label: '重点关注（逗号分隔）', type: 'text', default: '项目进展,下周计划' },
-      { key: 'format', label: '输出格式', type: 'select', options: ['Markdown', '飞书文档'], default: 'Markdown' },
+      { key: 'format', label: '输出格式', type: 'select', options: ['Markdown'], default: 'Markdown' },
     ],
     command: '生成{date_range}的周报，重点覆盖{focus}，输出为{format}格式',
   },

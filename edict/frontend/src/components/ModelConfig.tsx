@@ -17,7 +17,7 @@ const FALLBACK_MODELS = [
 
 const PLATFORMS = [
   { id: 'discord', label: 'Discord' },
-  { id: 'feishu', label: '飞书' },
+  { id: 'feishu', label: 'feishu' },
   { id: 'telegram', label: 'Telegram' },
   { id: 'slack', label: 'Slack' },
 ];

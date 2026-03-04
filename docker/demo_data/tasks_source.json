@@ -5,7 +5,7 @@
     "official": "礼部尚书",
     "org": "礼部",
     "state": "Done",
-    "now": "✅ 周报已生成并推送至飞书",
+    "now": "✅ 周报已生成并推送至Discord",
     "eta": "2026-02-24",
     "block": "无",
     "output": "/tmp/weekly-report-20260224.md",
