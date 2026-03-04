@@ -1,12 +1,34 @@
 #!/usr/bin/env python3
-import json, pathlib, datetime, logging
+import json, pathlib, datetime, logging, os
 from file_lock import atomic_json_write, atomic_json_read
 from utils import read_json
 
 log = logging.getLogger('refresh')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s', datefmt='%H:%M:%S')
 
-BASE = pathlib.Path(__file__).parent.parent
+
+def _find_repo_dir():
+    env = os.environ.get('REPO_DIR', '').strip()
+    if env:
+        p = pathlib.Path(env)
+        if p.is_dir():
+            return p
+    scripts_dir = pathlib.Path(__file__).resolve().parent
+    marker = scripts_dir / '.edict_repo'
+    if marker.exists():
+        try:
+            repo = pathlib.Path(marker.read_text().strip())
+            if repo.is_dir() and (repo / 'data').is_dir():
+                return repo
+        except Exception:
+            pass
+    file_based = scripts_dir.parent
+    if (file_based / 'data').is_dir():
+        return file_based
+    return file_based
+
+
+BASE = _find_repo_dir()
 DATA = BASE / 'data'
 
 

@@ -185,10 +185,19 @@ def sync_scripts_to_workspaces():
     scripts_src = BASE / 'scripts'
     if not scripts_src.is_dir():
         return
+    repo_dir_str = str(BASE.resolve())
     synced = 0
     for proj_name, runtime_id in _SOUL_DEPLOY_MAP.items():
         ws_scripts = pathlib.Path.home() / f'.openclaw/workspace-{runtime_id}' / 'scripts'
         ws_scripts.mkdir(parents=True, exist_ok=True)
+        # 写入 .edict_repo 标记，让 kanban_update.py 等脚本能找到项目根目录
+        marker = ws_scripts / '.edict_repo'
+        try:
+            old = marker.read_text().strip() if marker.exists() else ''
+        except Exception:
+            old = ''
+        if old != repo_dir_str:
+            marker.write_text(repo_dir_str)
         for src_file in scripts_src.iterdir():
             if src_file.suffix not in ('.py', '.sh') or src_file.stem.startswith('__'):
                 continue
@@ -207,6 +216,13 @@ def sync_scripts_to_workspaces():
     # also sync to workspace-main for legacy compatibility
     ws_main_scripts = pathlib.Path.home() / '.openclaw/workspace-main/scripts'
     ws_main_scripts.mkdir(parents=True, exist_ok=True)
+    marker_main = ws_main_scripts / '.edict_repo'
+    try:
+        old_main = marker_main.read_text().strip() if marker_main.exists() else ''
+    except Exception:
+        old_main = ''
+    if old_main != repo_dir_str:
+        marker_main.write_text(repo_dir_str)
     for src_file in scripts_src.iterdir():
         if src_file.suffix not in ('.py', '.sh') or src_file.stem.startswith('__'):
             continue

@@ -54,6 +54,9 @@ fi
 
 mkdir -p "$REPO_DIR/data"
 
+# ── 1.5 同步脚本到 workspace（确保 .edict_repo 标记就位） ──
+python3 "$REPO_DIR/scripts/sync_agent_config.py" 2>/dev/null || true
+
 # ── 2. 启动数据刷新循环（后台） ──
 nohup bash "$REPO_DIR/scripts/run_loop.sh" >> /tmp/sansheng_liubu_refresh.log 2>&1 &
 sleep 0.5

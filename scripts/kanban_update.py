@@ -24,7 +24,42 @@
 """
 import json, pathlib, datetime, sys, subprocess, logging, os, re
 
-_BASE = pathlib.Path(__file__).resolve().parent.parent
+
+def _find_repo_dir():
+    """定位项目根目录。
+    脚本会被 sync_scripts_to_workspaces 复制到各 agent workspace，
+    此时 __file__ 指向 workspace 而非项目目录，需要多级回退。
+    优先级: REPO_DIR 环境变量 → .edict_repo 标记文件 → __file__ 推导(含验证)
+    """
+    # 1. 环境变量（最高优先级）
+    env = os.environ.get('REPO_DIR', '').strip()
+    if env:
+        p = pathlib.Path(env)
+        if p.is_dir():
+            return p
+
+    scripts_dir = pathlib.Path(__file__).resolve().parent
+
+    # 2. .edict_repo 标记文件（由 sync_scripts_to_workspaces 写入）
+    marker = scripts_dir / '.edict_repo'
+    if marker.exists():
+        try:
+            repo = pathlib.Path(marker.read_text().strip())
+            if repo.is_dir() and (repo / 'data').is_dir():
+                return repo
+        except Exception:
+            pass
+
+    # 3. __file__ 推导 + 验证
+    file_based = scripts_dir.parent
+    if (file_based / 'data').is_dir():
+        return file_based
+
+    # 4. 兜底：即使 data/ 不存在也返回（首次安装场景）
+    return file_based
+
+
+_BASE = _find_repo_dir()
 TASKS_FILE = _BASE / 'data' / 'tasks_source.json'
 REFRESH_SCRIPT = _BASE / 'scripts' / 'refresh_live_data.py'
 
@@ -79,7 +114,6 @@ def now_iso():
     return datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
 
 def find_task(tasks, task_id):
-    log.info(f'TASKS_FILE = {TASKS_FILE}')
     return next((t for t in tasks if t.get('id') == task_id), None)
 
 

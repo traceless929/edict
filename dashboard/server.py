@@ -1979,21 +1979,21 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
             f'📜 皇上旨意需要你处理\n'
             f'任务ID: {task_id}\n'
             f'旨意: {title}\n'
-            f'⚠️ 如果已有此任务，请勿重复创建。直接用 kanban_update.py 更新状态。\n'
+            f'⚠️ 看板已有此任务，请勿重复创建。直接用 kanban_update.py 更新状态。\n'
             f'请立即转交中书省起草执行方案。'
         ),
         'zhongshu': (
             f'📜 旨意已到中书省，请起草方案\n'
             f'任务ID: {task_id}\n'
             f'旨意: {title}\n'
-            f'⚠️ 如果已有此任务记录，请勿重复创建。直接用 kanban_update.py state 更新状态。\n'
+            f'⚠️ 看板已有此任务记录，请勿重复创建。直接用 kanban_update.py state 更新状态。\n'
             f'请立即起草执行方案，走完完整三省流程（中书起草→门下审议→尚书派发→六部执行）。'
         ),
         'menxia': (
             f'📋 中书省方案提交审议\n'
             f'任务ID: {task_id}\n'
             f'旨意: {title}\n'
-            f'⚠️ 如果已有此任务，请勿重复创建。\n'
+            f'⚠️ 看板已有此任务，请勿重复创建。\n'
             f'请审议中书省方案，给出准奏或封驳意见。'
         ),
         'shangshu': (
@@ -2001,7 +2001,7 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
             f'任务ID: {task_id}\n'
             f'旨意: {title}\n'
             f'{"建议派发部门: " + target_dept if target_dept else ""}\n'
-            f'⚠️ 如果已有此任务，请勿重复创建。\n'
+            f'⚠️ 看板已有此任务，请勿重复创建。\n'
             f'请分析方案并派发给六部执行。'
         ),
     }
@@ -2009,7 +2009,7 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
         f'📌 请处理任务\n'
         f'任务ID: {task_id}\n'
         f'旨意: {title}\n'
-        f'⚠️ 如果已有此任务，请勿重复创建。直接用 kanban_update.py 更新状态。'
+        f'⚠️ 看板已有此任务，请勿重复创建。直接用 kanban_update.py 更新状态。'
     ))
 
     def _do_dispatch():
