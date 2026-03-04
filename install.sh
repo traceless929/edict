@@ -24,6 +24,46 @@ warn()  { echo -e "${YELLOW}⚠️  $1${NC}"; }
 error() { echo -e "${RED}❌ $1${NC}"; }
 info()  { echo -e "${BLUE}ℹ️  $1${NC}"; }
 
+MODE="install"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --reset) MODE="reset"; shift ;;
+    -h|--help)
+      echo "用法: bash install.sh [--reset]"
+      echo "  (无参数)  首次完整安装"
+      echo "  --reset   清除数据目录和 Workspace 后重新初始化（不重新注册 Agents）"
+      exit 0 ;;
+    *) error "未知参数: $1"; exit 1 ;;
+  esac
+done
+
+# ── Reset: 清除数据目录与 Workspace ──────────────────────────
+clean_data_and_workspaces() {
+  AGENTS=(taizi zhongshu menxia shangshu hubu libu bingbu xingbu gongbu libu_hr zaochao)
+
+  warn "即将删除以下内容："
+  echo "  • 数据目录:  $REPO_DIR/data"
+  for agent in "${AGENTS[@]}"; do
+    echo "  • Workspace: $OC_HOME/workspace-$agent"
+  done
+  echo ""
+  read -rp "确认删除并重新初始化？(y/N) " confirm
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    info "已取消"
+    exit 0
+  fi
+
+  info "清除数据目录..."
+  rm -rf "$REPO_DIR/data"
+  log "已删除: $REPO_DIR/data"
+
+  info "清除 Agent Workspace..."
+  for agent in "${AGENTS[@]}"; do
+    rm -rf "$OC_HOME/workspace-$agent"
+    log "已删除: $OC_HOME/workspace-$agent"
+  done
+}
+
 # ── Step 0: 依赖检查 ──────────────────────────────────────────
 check_deps() {
   info "检查依赖..."
@@ -226,25 +266,41 @@ restart_gateway() {
 
 # ── Main ────────────────────────────────────────────────────
 banner
-check_deps
-create_workspaces
-register_agents
-init_data
-build_frontend
-first_sync
-restart_gateway
 
-echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  🎉  三省六部安装完成！                          ║${NC}"
-echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
-echo ""
-echo "下一步："
-echo "  启动服务:  bash start.sh          (后台运行)"
-echo "  停止服务:  bash stop.sh"
-echo "  指定token: AUTH_TOKEN=xxx bash start.sh"
-echo "  打开看板:  http://<your-ip>:19527"
-echo "  首次启动自动生成 Token，查看: cat data/.auth_token"
-echo ""
-info "默认端口 19527，监听 0.0.0.0（支持公网访问）"
-info "文档: docs/getting-started.md"
+if [[ "$MODE" == "reset" ]]; then
+  check_deps
+  clean_data_and_workspaces
+  create_workspaces
+  init_data
+  first_sync
+  restart_gateway
+
+  echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║  🔄  数据与 Workspace 重置完成！                ║${NC}"
+  echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
+  echo ""
+else
+  check_deps
+  create_workspaces
+  register_agents
+  init_data
+  build_frontend
+  first_sync
+  restart_gateway
+
+  echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║  🎉  三省六部安装完成！                          ║${NC}"
+  echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo "下一步："
+  echo "  启动服务:  bash start.sh          (后台运行)"
+  echo "  停止服务:  bash stop.sh"
+  echo "  指定token: AUTH_TOKEN=xxx bash start.sh"
+  echo "  打开看板:  http://<your-ip>:19527"
+  echo "  首次启动自动生成 Token，查看: cat data/.auth_token"
+  echo ""
+  info "默认端口 19527，监听 0.0.0.0（支持公网访问）"
+  info "文档: docs/getting-started.md"
+fi
